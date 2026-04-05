@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🛒 Lista de Mercado</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, push, remove, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ─────────────────────────────────────────────
+  // 🔥 CONFIGURE SEU FIREBASE AQUI
+  // ─────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyB4yCrhp1cdIAibmiKfk_v9pR1DMjC2a4E",
+    authDomain: "itenscompras-bc8b9.firebaseapp.com",
+    databaseURL: "https://itenscompras-bc8b9-default-rtdb.firebaseio.com",
+    projectId: "itenscompras-bc8b9",
+    storageBucket: "itenscompras-bc8b9.firebasestorage.app",
+    messagingSenderId: "355985696914",
+    appId: "1:355985696914:web:a626deb1e2fb148ee65e4b"
+  };
+  // ─────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  window._fb = { db, ref, set, push, remove, onValue, update };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #c8f04a;
+    --accent2: #f0a04a;
+    --text: #f0ede6;
+    --text-muted: #6b6b6b;
+    --danger: #ff4a4a;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(15,15,15,0.92);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 20px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    flex: 1;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.4s;
+    flex-shrink: 0;
+  }
+  .status-dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .status-dot.offline { background: var(--danger); }
+
+  /* ── MAIN ── */
+  main { padding: 24px 16px; max-width: 600px; margin: 0 auto; }
+
+  /* ── ADD CATEGORY ── */
+  .add-category-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .add-category-bar input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .add-category-bar input:focus { border-color: var(--accent); }
+  .add-category-bar input::placeholder { color: var(--text-muted); }
+
+  .btn-add-cat {
+    background: var(--accent);
+    color: #0f0f0f;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-add-cat:active { transform: scale(0.97); opacity: 0.85; }
+
+  /* ── CATEGORY CARD ── */
+  .category {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .category.open .category-header { border-color: var(--border); }
+
+  .cat-icon {
+    font-size: 1.2rem;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface2);
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .cat-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    flex: 1;
+  }
+
+  .cat-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .cat-count.has-pending { color: var(--accent2); background: rgba(240,160,74,0.12); }
+
+  .chevron {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    transition: transform 0.2s;
+  }
+  .category.open .chevron { transform: rotate(180deg); }
+
+  .btn-del-cat {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+    line-height: 1;
+  }
+  .btn-del-cat:hover { color: var(--danger); background: rgba(255,74,74,0.1); }
+
+  /* ── CATEGORY BODY ── */
+  .category-body {
+    display: none;
+    padding: 12px 14px 14px;
+  }
+  .category.open .category-body { display: block; }
+
+  /* ── ADD ITEM ── */
+  .add-item-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .add-item-bar input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .add-item-bar input:focus { border-color: var(--accent); }
+  .add-item-bar input::placeholder { color: var(--text-muted); }
+
+  .btn-add-item {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--accent);
+    font-size: 1.3rem;
+    width: 40px; height: 40px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-add-item:hover { background: rgba(200,240,74,0.08); border-color: var(--accent); }
+
+  /* ── ITEM ── */
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+    animation: slideIn 0.2s ease;
+  }
+  .item:hover { background: var(--surface2); }
+
+  /* Custom checkbox */
+  .item-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  .item-check:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .item-check:checked::after {
+    content: '✓';
+    position: absolute;
+    color: #0f0f0f;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .item-name {
+    flex: 1;
+    font-size: 0.95rem;
+    transition: color 0.2s, text-decoration 0.2s;
+  }
+  .item.checked .item-name {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+
+  .btn-del-item {
+    background: none;
+    border: none;
+    color: transparent;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 3px 5px;
+    border-radius: 5px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .item:hover .btn-del-item { color: var(--text-muted); }
+  .btn-del-item:hover { color: var(--danger) !important; background: rgba(255,74,74,0.1); }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    padding: 20px 0 8px;
+  }
+
+  /* ── SETUP BANNER ── */
+  #setup-banner {
+    background: rgba(240,160,74,0.1);
+    border: 1px solid rgba(240,160,74,0.35);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 24px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--accent2);
+    display: none;
+  }
+  #setup-banner strong { font-family: 'Syne', sans-serif; display: block; margin-bottom: 4px; font-size: 0.95rem; }
+  #setup-banner code {
+    background: rgba(240,160,74,0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 999;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 6px 0 10px;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  @media (max-width: 400px) {
+    header h1 { font-size: 1.2rem; }
+    main { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="status-dot" id="status-dot"></div>
+  <h1>🛒 Lista de <span>Mercado</span></h1>
+</header>
+
+<main>
+  <div id="setup-banner">
+    <strong>⚙️ Configure o Firebase para sincronização</strong>
+    Abra este arquivo, encontre a seção <code>firebaseConfig</code> e substitua com as credenciais do seu projeto Firebase. Enquanto isso, os dados ficam salvos apenas neste navegador.
+  </div>
+
+  <div class="add-category-bar">
+    <input type="text" id="new-cat-input" placeholder="Nova categoria (ex: Limpeza)…" maxlength="40">
+    <button class="btn-add-cat" id="btn-add-cat">+ Categoria</button>
+  </div>
+
+  <div id="categories-container"></div>
+
+  <p class="empty" id="empty-state" style="display:none;">Nenhuma categoria ainda.<br>Crie a primeira acima! ☝️</p>
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────
+// STATE & STORAGE
+// ─────────────────────────────────────
+const STORAGE_KEY = 'mercado-lista-v1';
+let state = { categories: {} }; // { [catId]: { name, icon, items: { [itemId]: { name, checked } } } }
+let useFirebase = false;
+let fbDb, fbRef, fbSet, fbPush, fbRemove, fbOnValue, fbUpdate;
+
+const ICONS = ['🛒','🧴','🥩','🥦','🧹','🍞','🥛','🧺','🐾','🍷','💊','🧊'];
+
+function randomIcon() { return ICONS[Math.floor(Math.random() * ICONS.length)]; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// LOCAL STORAGE FALLBACK
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function loadLocal() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) state = JSON.parse(d);
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────
+// FIREBASE
+// ─────────────────────────────────────
+window.addEventListener('firebase-ready', () => {
+  const { db, ref, set, push, remove, onValue, update } = window._fb;
+  fbDb = db; fbRef = ref; fbSet = set; fbPush = push;
+  fbRemove = remove; fbOnValue = onValue; fbUpdate = update;
+
+  // Check if config was actually filled in
+  const dummy = "COLE_SUA_API_KEY_AQUI";
+  const configOk = !window._fb.db.app.options.apiKey.includes("COLE");
+
+  if (!configOk) {
+    document.getElementById('setup-banner').style.display = 'block';
+    loadLocal();
+    render();
+    return;
+  }
+
+  useFirebase = true;
+  document.getElementById('status-dot').className = 'status-dot online';
+
+  // Listen for realtime changes
+  fbOnValue(fbRef(fbDb, 'lista'), (snapshot) => {
+    const val = snapshot.val();
+    state = val ? { categories: val } : { categories: {} };
+    render();
+  });
+});
+
+// If Firebase never loads (offline), use local
+setTimeout(() => {
+  if (!useFirebase && Object.keys(state.categories).length === 0) {
+    loadLocal();
+    render();
+  }
+  if (!useFirebase) {
+    document.getElementById('setup-banner').style.display = 'block';
+  }
+}, 3000);
+
+// ─────────────────────────────────────
+// DATA OPERATIONS
+// ─────────────────────────────────────
+function addCategory(name) {
+  const id = uid();
+  const cat = { name: name.trim(), icon: randomIcon(), items: {} };
+  if (useFirebase) {
+    fbSet(fbRef(fbDb, `lista/${id}`), cat);
+  } else {
+    state.categories[id] = cat;
+    saveLocal(); render();
+  }
+}
+
+function deleteCategory(catId) {
+  if (!confirm('Excluir categoria e todos os itens?')) return;
+  if (useFirebase) {
+    fbRemove(fbRef(fbDb, `lista/${catId}`));
+  } else {
+    delete state.categories[catId];
+    saveLocal(); render();
+  }
+}
+
+function addItem(catId, name) {
+  const id = uid();
+  const item = { name: name.trim(), checked: false };
+  if (useFirebase) {
+    fbSet(fbRef(fbDb, `lista/${catId}/items/${id}`), item);
+  } else {
+    if (!state.categories[catId].items) state.categories[catId].items = {};
+    state.categories[catId].items[id] = item;
+    saveLocal(); render();
+  }
+}
+
+function deleteItem(catId, itemId) {
+  if (useFirebase) {
+    fbRemove(fbRef(fbDb, `lista/${catId}/items/${itemId}`));
+  } else {
+    delete state.categories[catId].items[itemId];
+    saveLocal(); render();
+  }
+}
+
+function toggleItem(catId, itemId, checked) {
+  if (useFirebase) {
+    fbUpdate(fbRef(fbDb, `lista/${catId}/items/${itemId}`), { checked });
+  } else {
+    state.categories[catId].items[itemId].checked = checked;
+    saveLocal();
+    // Update UI without full re-render
+    const row = document.querySelector(`[data-item="${itemId}"]`);
+    if (row) row.classList.toggle('checked', checked);
+    updateCatCount(catId);
+  }
+}
+
+// ─────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────
+function render() {
+  const container = document.getElementById('categories-container');
+  const emptyState = document.getElementById('empty-state');
+  const cats = state.categories || {};
+  const ids = Object.keys(cats);
+
+  emptyState.style.display = ids.length === 0 ? 'block' : 'none';
+
+  // Keep track of open categories
+  const openCats = new Set(
+    [...container.querySelectorAll('.category.open')].map(el => el.dataset.cat)
+  );
+
+  container.innerHTML = '';
+
+  ids.forEach(catId => {
+    const cat = cats[catId];
+    const items = cat.items || {};
+    const itemIds = Object.keys(items);
+    const total = itemIds.length;
+    const pending = itemIds.filter(id => !items[id].checked).length;
+    const isOpen = openCats.has(catId) || openCats.size === 0 && ids.length === 1;
+
+    const div = document.createElement('div');
+    div.className = 'category' + (isOpen ? ' open' : '');
+    div.dataset.cat = catId;
+
+    // Progress
+    const pct = total > 0 ? Math.round(((total - pending) / total) * 100) : 0;
+
+    div.innerHTML = `
+      <div class="category-header" onclick="toggleCat('${catId}')">
+        <div class="cat-icon">${cat.icon || '🛒'}</div>
+        <span class="cat-name">${escHtml(cat.name)}</span>
+        ${total > 0 ? `<span class="cat-count ${pending > 0 ? 'has-pending' : ''}">${pending > 0 ? pending + ' faltam' : '✓ tudo'}</span>` : ''}
+        <span class="chevron">▾</span>
+        <button class="btn-del-cat" onclick="event.stopPropagation(); deleteCategory('${catId}')" title="Excluir categoria">✕</button>
+      </div>
+      <div class="category-body">
+        ${total > 0 ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
+        <div class="item-list" id="list-${catId}">
+          ${itemIds.length === 0 ? '<p class="empty">Nenhum item ainda.</p>' : ''}
+          ${itemIds.map(itemId => {
+            const it = items[itemId];
+            return `
+            <div class="item ${it.checked ? 'checked' : ''}" data-item="${itemId}">
+              <input type="checkbox" class="item-check" ${it.checked ? 'checked' : ''}
+                onchange="toggleItem('${catId}','${itemId}',this.checked)">
+              <span class="item-name">${escHtml(it.name)}</span>
+              <button class="btn-del-item" onclick="deleteItem('${catId}','${itemId}')" title="Remover">✕</button>
+            </div>`;
+          }).join('')}
+        </div>
+        <hr class="divider">
+        <div class="add-item-bar">
+          <input type="text" placeholder="Adicionar item…" maxlength="60"
+            id="inp-${catId}"
+            onkeydown="if(event.key==='Enter') addItemFromInput('${catId}')">
+          <button class="btn-add-item" onclick="addItemFromInput('${catId}')">+</button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+function updateCatCount(catId) {
+  // lightweight refresh of just the count badge
+  const cat = state.categories[catId];
+  if (!cat) return;
+  const items = cat.items || {};
+  const ids = Object.keys(items);
+  const pending = ids.filter(id => !items[id].checked).length;
+  const badge = document.querySelector(`[data-cat="${catId}"] .cat-count`);
+  if (badge) {
+    badge.textContent = pending > 0 ? pending + ' faltam' : '✓ tudo';
+    badge.className = 'cat-count' + (pending > 0 ? ' has-pending' : '');
+  }
+}
+
+function toggleCat(catId) {
+  const el = document.querySelector(`[data-cat="${catId}"]`);
+  if (el) el.classList.toggle('open');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────
+// UI EVENTS
+// ─────────────────────────────────────
+document.getElementById('btn-add-cat').addEventListener('click', () => {
+  const input = document.getElementById('new-cat-input');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  addCategory(name);
+  input.value = '';
+  input.focus();
+  toast('Categoria criada! ✓');
+});
+
+document.getElementById('new-cat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-add-cat').click();
+});
+
+function addItemFromInput(catId) {
+  const input = document.getElementById(`inp-${catId}`);
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  addItem(catId, name);
+  input.value = '';
+  input.focus();
+}
+
+// ─────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─────────────────────────────────────
+// INIT
+// ─────────────────────────────────────
+loadLocal();
+render();
+</script>
+</body>
+</html>

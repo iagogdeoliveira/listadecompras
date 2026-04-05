@@ -275,15 +275,15 @@
     position: relative;
   }
   .item-check:checked {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent2);
+    border-color: var(--accent2);
   }
   .item-check:checked::after {
-    content: '✓';
+    content: '!';
     position: absolute;
     color: #0f0f0f;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 900;
   }
 
   .item-name {
@@ -291,9 +291,14 @@
     font-size: 0.95rem;
     transition: color 0.2s, text-decoration 0.2s;
   }
-  .item.checked .item-name {
+  .item:not(.checked) .item-name {
     color: var(--text-muted);
     text-decoration: line-through;
+  }
+  .item.checked .item-name {
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
   }
 
   .btn-del-item {
@@ -564,7 +569,7 @@ function render() {
       items[a].name.localeCompare(items[b].name, 'pt-BR', { sensitivity: 'base' })
     );
     const total = itemIds.length;
-    const pending = itemIds.filter(id => !items[id].checked).length;
+    const pending = itemIds.filter(id => items[id].checked).length;
     const isOpen = openCats.has(catId) || openCats.size === 0 && ids.length === 1;
 
     const div = document.createElement('div');
@@ -572,13 +577,13 @@ function render() {
     div.dataset.cat = catId;
 
     // Progress
-    const pct = total > 0 ? Math.round(((total - pending) / total) * 100) : 0;
+    const pct = total > 0 ? Math.round(((total - pending) / total) * 100) : 0; // não-marcados = já têm
 
     div.innerHTML = `
       <div class="category-header" onclick="toggleCat('${catId}')">
         <div class="cat-icon">${cat.icon || '🛒'}</div>
         <span class="cat-name">${escHtml(cat.name)}</span>
-        ${total > 0 ? `<span class="cat-count ${pending > 0 ? 'has-pending' : ''}">${pending > 0 ? pending + ' faltam' : '✓ tudo'}</span>` : ''}
+        ${total > 0 ? `<span class="cat-count ${pending > 0 ? 'has-pending' : ''}">${pending > 0 ? pending + ' comprar' : '✓ tudo ok'}</span>` : ''}
         <span class="chevron">▾</span>
         <button class="btn-del-cat" onclick="event.stopPropagation(); deleteCategory('${catId}')" title="Excluir categoria">✕</button>
       </div>
@@ -617,10 +622,10 @@ function updateCatCount(catId) {
   if (!cat) return;
   const items = cat.items || {};
   const ids = Object.keys(items);
-  const pending = ids.filter(id => !items[id].checked).length;
+  const pending = ids.filter(id => items[id].checked).length;
   const badge = document.querySelector(`[data-cat="${catId}"] .cat-count`);
   if (badge) {
-    badge.textContent = pending > 0 ? pending + ' faltam' : '✓ tudo';
+    badge.textContent = pending > 0 ? pending + ' comprar' : '✓ tudo ok';
     badge.className = 'cat-count' + (pending > 0 ? ' has-pending' : '');
   }
 }

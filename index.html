@@ -544,7 +544,9 @@ function render() {
   const container = document.getElementById('categories-container');
   const emptyState = document.getElementById('empty-state');
   const cats = state.categories || {};
-  const ids = Object.keys(cats);
+  const ids = Object.keys(cats).sort((a, b) =>
+    cats[a].name.localeCompare(cats[b].name, 'pt-BR', { sensitivity: 'base' })
+  );
 
   emptyState.style.display = ids.length === 0 ? 'block' : 'none';
 
@@ -558,7 +560,9 @@ function render() {
   ids.forEach(catId => {
     const cat = cats[catId];
     const items = cat.items || {};
-    const itemIds = Object.keys(items);
+    const itemIds = Object.keys(items).sort((a, b) =>
+      items[a].name.localeCompare(items[b].name, 'pt-BR', { sensitivity: 'base' })
+    );
     const total = itemIds.length;
     const pending = itemIds.filter(id => !items[id].checked).length;
     const isOpen = openCats.has(catId) || openCats.size === 0 && ids.length === 1;
